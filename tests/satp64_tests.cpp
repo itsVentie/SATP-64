@@ -3,7 +3,7 @@
 #include <bitset>
 #include <random>
 #include <vector>
-#include <cmath>
+#include <unordered_set>
 
 TEST(Satp64Test, KnownAnswerTest) {
     constexpr std::array<uint8_t, 16> key = {
@@ -20,6 +20,28 @@ TEST(Satp64Test, KnownAnswerTest) {
 
     uint64_t dt = cipher.decrypt_block(ct);
     EXPECT_EQ(dt, pt);
+}
+
+TEST(Satp64Test, BijectivityCheck) {
+    constexpr std::array<uint8_t, 16> key = {
+        0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x11, 0x22, 0x33,
+        0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB
+    };
+    Satp64 cipher(key);
+
+    constexpr size_t iterations = 100000;
+    std::unordered_set<uint64_t> seen_ciphertexts;
+    seen_ciphertexts.reserve(iterations);
+
+    std::mt19937_64 rng(0x42);
+
+    for (size_t i = 0; i < iterations; ++i) {
+        uint64_t pt = rng();
+        uint64_t ct = cipher.encrypt_block(pt);
+
+        auto [_, inserted] = seen_ciphertexts.insert(ct);
+        EXPECT_TRUE(inserted);
+    }
 }
 
 TEST(Satp64Test, StrictAvalancheCriterionMatrix) {
